@@ -1,0 +1,37 @@
+image: ubuntu:20.04
+
+variables:
+  PLUGIN_NAME: "vip_medic"
+  PLUGIN_ALIAS: "VipMedicst"
+  SDK_NAME: "cs2"
+  TARGET_PLATFORM: "x86_64"
+  HL2SDK_ROOT: "$CI_PROJECT_DIR/external"
+  MMS_PATH: "$CI_PROJECT_DIR/external/metamod-source"
+
+before_script:
+  - export DEBIAN_FRONTEND=noninteractive
+  - apt-get update -qy
+  - apt-get install -y git clang-10 clang++-10 binutils
+  - apt-get install -y python3.10 python3-pip
+  - python3 -m pip install --upgrade pip setuptools wheel
+  - python3 -m pip install git+https://github.com/alliedmodders/ambuild
+  - mkdir external && cd external
+  - git clone --recursive --branch master --single-branch https://github.com/alliedmodders/metamod-source.git
+  - git clone --recursive --branch cs2 --single-branch https://github.com/alliedmodders/hl2sdk.git hl2sdk-cs2
+  - cd ..
+  - cp -r external/metamod-source/hl2sdk-manifests hl2sdk-manifests
+
+stages:
+  - build
+
+build:
+  stage: build
+  script:
+    - mkdir build && cd build
+    - CC=clang-10 CXX=clang++-10 python3 ../configure.py --plugin-name=$PLUGIN_NAME --plugin-alias=$PLUGIN_ALIAS --enable-optimize --sdks=$SDK_NAME --targets=$TARGET_PLATFORM --mms_path=$MMS_PATH --hl2sdk-root=$HL2SDK_ROOT --hl2sdk-manifests hl2sdk-manifests
+    - ambuild
+    - strip package/addons/vip_modules/vip_medic.so
+  artifacts:
+    paths:
+      - build/package/addons/
+    name: "vip_medic"
